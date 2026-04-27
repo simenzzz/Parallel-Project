@@ -1,0 +1,14 @@
+| backend | grid_res | best_config | meshes | avg_mean_ms | avg_speedup_vs_seq |
+| --- | --- | --- | --- | --- | --- |
+| openmp | 32 | omp_4t | 9 | 2.342 | 1.67x |
+| pthreads | 32 | pth_4t | 9 | 2.243 | 1.58x |
+| mpi | 32 | mpi_4p | 9 | 3.452 | 1.53x |
+| cuda | 32 | cuda_128tpb | 9 | 0.663 | 7.66x |
+| openmp | 64 | omp_4t | 9 | 3.900 | 1.81x |
+| pthreads | 64 | pth_4t | 9 | 4.303 | 1.83x |
+| mpi | 64 | mpi_8p | 9 | 5.593 | 1.72x |
+| cuda | 64 | cuda_256tpb | 9 | 1.109 | 9.44x |
+| openmp | 128 | omp_4t | 9 | 8.970 | 2.14x |
+| pthreads | 128 | pth_8t | 9 | 12.516 | 2.00x |
+| mpi | 128 | mpi_8p | 9 | 11.796 | 1.82x |
+| cuda | 128 | cuda_256tpb | 9 | 3.836 | 8.05x |
