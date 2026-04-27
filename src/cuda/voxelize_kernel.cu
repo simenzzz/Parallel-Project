@@ -133,6 +133,9 @@ static __device__ int sat_device(float3 v0, float3 v1, float3 v2, float3 center,
     return 1;
 }
 
+#define TILE_DIM 8
+#define CHUNK_SIZE 256
+
 __global__ void voxelize_kernel(const float3 *__restrict__ verts,
                                 const int3 *__restrict__ faces,
                                 const VoxelBounds *__restrict__ face_bounds,
@@ -140,30 +143,62 @@ __global__ void voxelize_kernel(const float3 *__restrict__ verts,
                                 unsigned int *__restrict__ grid,
                                 int res)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid >= n_faces) {
-        return;
-    }
+    __shared__ float3 s_v0[CHUNK_SIZE];
+    __shared__ float3 s_v1[CHUNK_SIZE];
+    __shared__ float3 s_v2[CHUNK_SIZE];
+    __shared__ VoxelBounds s_bounds[CHUNK_SIZE];
+    __shared__ unsigned int s_grid[TILE_DIM * TILE_DIM * TILE_DIM];
 
-    int3 f = faces[tid];
-    /* Face AABBs are precomputed on the host so the kernel can skip per-face min/max work. */
-    VoxelBounds bounds = face_bounds[tid];
-    float3 v0 = verts[f.x];
-    float3 v1 = verts[f.y];
-    float3 v2 = verts[f.z];
+    int tid = threadIdx.z * TILE_DIM * TILE_DIM + threadIdx.y * TILE_DIM + threadIdx.x;
+    s_grid[tid] = 0;
+
+    int block_vx = blockIdx.x * TILE_DIM;
+    int block_vy = blockIdx.y * TILE_DIM;
+    int block_vz = blockIdx.z * TILE_DIM;
+    
+    int vx = block_vx + threadIdx.x;
+    int vy = block_vy + threadIdx.y;
+    int vz = block_vz + threadIdx.z;
     float half = 0.5f / (float)res;
 
-    for (int vx = bounds.min_x; vx <= bounds.max_x; ++vx) {
-        for (int vy = bounds.min_y; vy <= bounds.max_y; ++vy) {
-            for (int vz = bounds.min_z; vz <= bounds.max_z; ++vz) {
-                float3 center = make_float3(((float)vx + 0.5f) / (float)res,
-                                            ((float)vy + 0.5f) / (float)res,
-                                            ((float)vz + 0.5f) / (float)res);
-                if (sat_device(v0, v1, v2, center, half)) {
-                    int idx = vx + vy * res + vz * res * res;
-                    atomicOr(&grid[idx], 1u);
+    for (int i = 0; i < n_faces; i += CHUNK_SIZE) {
+        int left = n_faces - i;
+        int chunk = left < CHUNK_SIZE ? left : CHUNK_SIZE;
+        
+        if (tid < chunk) {
+            int f_idx = i + tid;
+            int3 f = faces[f_idx];
+            s_v0[tid] = verts[f.x];
+            s_v1[tid] = verts[f.y];
+            s_v2[tid] = verts[f.z];
+            s_bounds[tid] = face_bounds[f_idx];
+        }
+        __syncthreads();
+        
+        for (int t = 0; t < chunk; ++t) {
+            VoxelBounds b = s_bounds[t];
+            if (b.max_x >= block_vx && b.min_x < block_vx + TILE_DIM &&
+                b.max_y >= block_vy && b.min_y < block_vy + TILE_DIM &&
+                b.max_z >= block_vz && b.min_z < block_vz + TILE_DIM) 
+            {
+                if (vx >= b.min_x && vx <= b.max_x &&
+                    vy >= b.min_y && vy <= b.max_y &&
+                    vz >= b.min_z && vz <= b.max_z) 
+                {
+                    float3 center = make_float3(((float)vx + 0.5f) / (float)res,
+                                                ((float)vy + 0.5f) / (float)res,
+                                                ((float)vz + 0.5f) / (float)res);
+                    if (sat_device(s_v0[t], s_v1[t], s_v2[t], center, half)) {
+                        s_grid[tid] = 1;
+                    }
                 }
             }
         }
+        __syncthreads();
+    }
+
+    if (s_grid[tid] && vx < res && vy < res && vz < res) {
+        int idx = vx + vy * res + vz * res * res;
+        atomicOr(&grid[idx], 1u);
     }
 }

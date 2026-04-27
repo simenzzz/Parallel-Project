@@ -63,6 +63,7 @@ int main(int argc, char **argv)
     WorkerArgs *args = NULL;
     char config[32];
     double elapsed_ms;
+    pthread_mutex_t *z_mutexes = NULL;
 
     if (parse_args(argc, argv, &opt) != 0) {
         fprintf(stderr, "Usage: %s -i <mesh.off> -r <res> -o <out.voxel> -t <threads> -c <results.csv>\n",
@@ -81,12 +82,25 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    z_mutexes = (pthread_mutex_t *)malloc((size_t)opt.res * sizeof(pthread_mutex_t));
+    if (z_mutexes == NULL) {
+        fprintf(stderr, "Failed to allocate mutexes\n");
+        voxel_grid_free(&grid);
+        mesh_free(&mesh);
+        return 1;
+    }
+    for (int i = 0; i < opt.res; ++i) {
+        pthread_mutex_init(&z_mutexes[i], NULL);
+    }
+
     threads = (pthread_t *)malloc((size_t)opt.threads * sizeof(pthread_t));
     args = (WorkerArgs *)malloc((size_t)opt.threads * sizeof(WorkerArgs));
     if (threads == NULL || args == NULL) {
         fprintf(stderr, "Failed to allocate pthread resources\n");
         free(threads);
         free(args);
+        for (int i = 0; i < opt.res; ++i) pthread_mutex_destroy(&z_mutexes[i]);
+        free(z_mutexes);
         voxel_grid_free(&grid);
         mesh_free(&mesh);
         return 1;
@@ -96,7 +110,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < opt.threads; ++i) {
         int start_face = (mesh.num_faces * i) / opt.threads;
         int end_face = (mesh.num_faces * (i + 1)) / opt.threads;
-        args[i] = (WorkerArgs){&mesh, &grid, opt.res, start_face, end_face};
+        args[i] = (WorkerArgs){&mesh, &grid, opt.res, start_face, end_face, z_mutexes};
         if (pthread_create(&threads[i], NULL, worker_fn, &args[i]) != 0) {
             fprintf(stderr, "pthread_create failed for thread %d\n", i);
             for (int j = 0; j < i; ++j) {
@@ -104,6 +118,8 @@ int main(int argc, char **argv)
             }
             free(threads);
             free(args);
+            for (int k = 0; k < opt.res; ++k) pthread_mutex_destroy(&z_mutexes[k]);
+            free(z_mutexes);
             voxel_grid_free(&grid);
             mesh_free(&mesh);
             return 1;
@@ -114,6 +130,8 @@ int main(int argc, char **argv)
             fprintf(stderr, "pthread_join failed for thread %d\n", i);
             free(threads);
             free(args);
+            for (int k = 0; k < opt.res; ++k) pthread_mutex_destroy(&z_mutexes[k]);
+            free(z_mutexes);
             voxel_grid_free(&grid);
             mesh_free(&mesh);
             return 1;
@@ -127,6 +145,8 @@ int main(int argc, char **argv)
                        mesh.num_faces, opt.res, elapsed_ms) != 0) {
         free(threads);
         free(args);
+        for (int k = 0; k < opt.res; ++k) pthread_mutex_destroy(&z_mutexes[k]);
+        free(z_mutexes);
         voxel_grid_free(&grid);
         mesh_free(&mesh);
         return 1;
@@ -134,6 +154,8 @@ int main(int argc, char **argv)
 
     free(threads);
     free(args);
+    for (int k = 0; k < opt.res; ++k) pthread_mutex_destroy(&z_mutexes[k]);
+    free(z_mutexes);
     voxel_grid_free(&grid);
     mesh_free(&mesh);
     return 0;

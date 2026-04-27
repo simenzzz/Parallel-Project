@@ -141,11 +141,12 @@ int main(int argc, char **argv)
         goto fail;
     }
 
-    blocks = (mesh.num_faces + opt.block_size - 1) / opt.block_size;
+    dim3 blockDim3(8, 8, 8);
+    dim3 gridDim3((opt.res + 7) / 8, (opt.res + 7) / 8, (opt.res + 7) / 8);
     if (check_cuda(cudaEventRecord(start), "cudaEventRecord start") != 0) {
         goto fail;
     }
-    voxelize_kernel<<<blocks, opt.block_size>>>(verts_d, faces_d, bounds_d, mesh.num_faces, grid_d, opt.res);
+    voxelize_kernel<<<gridDim3, blockDim3>>>(verts_d, faces_d, bounds_d, mesh.num_faces, grid_d, opt.res);
     if (check_cuda(cudaGetLastError(), "voxelize_kernel launch") != 0) {
         goto fail;
     }

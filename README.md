@@ -221,3 +221,15 @@ The local git repository is configured to use:
 ```text
 https://github.com/simenzzz/Parallel-Project
 ```
+
+## Google Colab
+
+To run the CUDA optimizations on Google Colab (if you do not have a local NVIDIA GPU):
+
+1. Open [Google Colab](https://colab.research.google.com/).
+2. Select **File > Upload notebook** and upload the provided `CUDA_Colab.ipynb` file from the project root.
+3. Make sure to change your Colab runtime to use a GPU:
+   - Click **Runtime > Change runtime type**.
+   - Select **T4 GPU** (or any available GPU).
+   - Click **Save**.
+4. Run the cells in the notebook. It will clone the repository, compile the CUDA backend, and run the benchmark.

@@ -23,10 +23,9 @@ void *worker_fn(void *arg)
                         ((float)vz + 0.5f) / (float)wa->res
                     };
                     if (sat_triangle_aabb(&tri, center, half)) {
-                        /* Benign data race: all stores write constant 1; single-byte
-                         * stores are atomic on x86/ARM. pthread_join provides the
-                         * memory barrier before the caller reads the grid. */
+                        pthread_mutex_lock(&wa->z_mutexes[vz]);
                         wa->grid->data[vg_idx(vx, vy, vz, wa->res)] = 1;
+                        pthread_mutex_unlock(&wa->z_mutexes[vz]);
                     }
                 }
             }
