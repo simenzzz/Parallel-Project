@@ -1,0 +1,13 @@
+bin/
+src/common/*.o
+scripts/__pycache__/
+*.pyc
+
+results/run_*/
+results/summary/
+results/*.csv
+results/*.voxel
+
+.DS_Store
+.claude/
+.codex
