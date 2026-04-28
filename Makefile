@@ -3,8 +3,16 @@ MPICC = mpicc
 NVCC = /usr/local/cuda/bin/nvcc
 CFLAGS = -O2 -Wall -Wextra -std=c99 -D_POSIX_C_SOURCE=200809L
 OMPFLAGS = -fopenmp
-PTHREADFLAGS = -pthread
 LDFLAGS = -lm
+
+# macOS OpenMP support via Homebrew
+ifeq ($(shell uname), Darwin)
+    ifeq ($(shell [ -d /opt/homebrew/opt/libomp ] && echo exists), exists)
+        OMPFLAGS = -Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include
+        LDFLAGS += -L/opt/homebrew/opt/libomp/lib -lomp
+    endif
+endif
+PTHREADFLAGS = -pthread
 CUDA_ARCH ?= sm_89
 NVFLAGS = -O2 -arch=$(CUDA_ARCH)
 

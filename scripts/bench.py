@@ -5,6 +5,7 @@ import subprocess
 import sys
 from datetime import datetime
 from dataclasses import dataclass
+import typing
 from pathlib import Path
 
 
@@ -64,7 +65,7 @@ def quote_command(command: list[str]) -> str:
     return " ".join(shlex.quote(part) for part in command)
 
 
-def infer_resolution(byte_count: int) -> int | None:
+def infer_resolution(byte_count: int) -> typing.Optional[int]:
     if byte_count <= 0:
         return None
 
@@ -140,8 +141,8 @@ def run_command(
     step: str,
     keep_going: bool,
     *,
-    verify_pair: tuple[Path, Path] | None = None,
-) -> BenchFailure | None:
+    verify_pair: typing.Optional[typing.Tuple[Path, Path]] = None,
+) -> typing.Optional[BenchFailure]:
     result = subprocess.run(command, check=False)
     if result.returncode == 0:
         return None
@@ -166,7 +167,7 @@ def verify_inputs(meshes: list[str], data_dir: Path) -> None:
         raise SystemExit(1)
 
 
-def build_command(binary: Path, *args: str | int) -> list[str]:
+def build_command(binary: Path, *args: typing.Union[str, int]) -> typing.List[str]:
     return [str(binary), *(str(arg) for arg in args)]
 
 
