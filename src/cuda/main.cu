@@ -86,6 +86,8 @@ int main(int argc, char **argv)
     char config[32];
     int total_voxels;
     int blocks;
+    dim3 blockDim3(8, 8, 8);
+    dim3 gridDim3(1, 1, 1);
 
     if (parse_args(argc, argv, &opt) != 0) {
         fprintf(stderr, "Usage: %s -i <mesh.off> -r <res> -o <out.voxel> -b <block_size> -c <results.csv>\n",
@@ -141,8 +143,7 @@ int main(int argc, char **argv)
         goto fail;
     }
 
-    dim3 blockDim3(8, 8, 8);
-    dim3 gridDim3((opt.res + 7) / 8, (opt.res + 7) / 8, (opt.res + 7) / 8);
+    gridDim3 = dim3((opt.res + 7) / 8, (opt.res + 7) / 8, (opt.res + 7) / 8);
     if (check_cuda(cudaEventRecord(start), "cudaEventRecord start") != 0) {
         goto fail;
     }
