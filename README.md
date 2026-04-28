@@ -133,24 +133,34 @@ Each benchmark run:
 - writes voxel outputs for each run/configuration
 - verifies every non-sequential output against the sequential reference
 
-## Reproducing All Results
+## Reproducing All Results (Hybrid Workflow)
 
-From the project root:
+Since the project uses both CPU backends (Sequential, OpenMP, Pthreads, MPI) and a GPU backend (CUDA), follow this hybrid workflow to generate the final report data.
 
+### 1. Local Run (CPU Backends)
+On your local machine (Mac/Linux):
 ```bash
 make clean
 make all
-python3 scripts/bench.py
-python3 scripts/summarize.py --fresh-only --format csv --per-resolution
+# Run only CPU backends to avoid CUDA/MPI issues locally
+python3 scripts/bench.py --backends sequential openmp pthreads mpi
 ```
+This will create a session folder like `results/run_20260428_120000/`. Keep note of this folder name.
 
-After `bench.py` finishes, it prints the session directory it wrote to, for example:
+### 2. Google Colab Run (GPU Backend)
+1. Upload `CUDA_Colab.ipynb` to Google Colab.
+2. Set Runtime to **T4 GPU**.
+3. Run all cells. The notebook is configured to run `python3 scripts/bench.py --backends cuda`.
+4. The notebook will automatically prompt you to download `cuda.csv` once finished.
 
-```text
-results/run_20260427_173810
+### 3. Merging and Summarizing
+1. Locate the `cuda.csv` you downloaded from Colab.
+2. Drag/Move `cuda.csv` into your **local** session folder (e.g., `results/run_20260428_120000/`).
+3. Run the summarizer locally:
+```bash
+python3 scripts/summarize.py --fresh-only
 ```
-
-`summarize.py --fresh-only` uses the newest complete benchmark session under `results/run_*`.
+The final report tables will be generated in `results/summary/`.
 
 ## Summary and Report Export
 
@@ -194,7 +204,7 @@ Generated files under `results/summary/` include:
 - `scalability.csv`
 - `scalability_notes.md`
 
-These files are intended to be pasted directly into the report without manual rebuilding of tables.
+Some of these tables were directly pasted into the report, while others were not to keep report size small.
 
 ## Current Implementation Notes
 
@@ -224,12 +234,11 @@ https://github.com/simenzzz/Parallel-Project
 
 ## Google Colab
 
-To run the CUDA optimizations on Google Colab (if you do not have a local NVIDIA GPU):
+To run the CUDA optimizations on Google Colab:
 
 1. Open [Google Colab](https://colab.research.google.com/).
-2. Select **File > Upload notebook** and upload the provided `CUDA_Colab.ipynb` file from the project root.
-3. Make sure to change your Colab runtime to use a GPU:
-   - Click **Runtime > Change runtime type**.
-   - Select **T4 GPU** (or any available GPU).
-   - Click **Save**.
-4. Run the cells in the notebook. It will clone the repository, compile the CUDA backend, and run the benchmark.
+2. Select **File > Upload notebook** and upload `CUDA_Colab.ipynb`.
+3. Set runtime to **GPU** (**Runtime > Change runtime type > T4 GPU**).
+4. Run the cells.
+5. **Download Results**: The notebook will automatically trigger a download for `cuda.csv`.
+6. **Merge**: Copy this `cuda.csv` into your latest local `results/run_*` folder to include GPU data in your final summary.
