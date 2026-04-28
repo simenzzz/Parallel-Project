@@ -58,6 +58,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Record failures and continue running the remaining matrix.",
     )
+    parser.add_argument(
+        "--backends",
+        nargs="+",
+        choices=("sequential", "openmp", "pthreads", "mpi", "cuda"),
+        help="Specific backends to run. Runs all if omitted.",
+    )
     return parser.parse_args()
 
 
@@ -212,119 +218,124 @@ def main() -> int:
             for run in range(1, args.repeats + 1):
                 step_prefix = f"mesh={mesh} res={res} run={run}"
 
-                failure = run_command(
-                    build_command(
-                        voxelize_seq,
-                        "-i",
-                        mesh_path,
-                        "-r",
-                        res,
-                        "-o",
-                        seq_out,
-                        "-c",
-                        results_dir / "sequential.csv",
-                    ),
-                    f"{step_prefix} sequential",
-                    keep_going,
-                )
-                if failure:
-                    failures.append(failure)
-                    continue
+                run_seq = not args.backends or "sequential" in args.backends or any(b in args.backends for b in ("openmp", "pthreads", "mpi", "cuda"))
+                if run_seq:
+                    failure = run_command(
+                        build_command(
+                            voxelize_seq,
+                            "-i",
+                            mesh_path,
+                            "-r",
+                            res,
+                            "-o",
+                            seq_out,
+                            "-c",
+                            results_dir / "sequential.csv",
+                        ),
+                        f"{step_prefix} sequential",
+                        keep_going,
+                    )
+                    if failure:
+                        failures.append(failure)
+                        continue
 
                 for threads in THREAD_COUNTS:
                     omp_out = results_dir / f"omp_{threads}t_{res}_{stem}.voxel"
                     pth_out = results_dir / f"pth_{threads}t_{res}_{stem}.voxel"
                     mpi_out = results_dir / f"mpi_{threads}p_{res}_{stem}.voxel"
 
-                    failure = run_command(
-                        build_command(
-                            voxelize_omp,
-                            "-i",
-                            mesh_path,
-                            "-r",
-                            res,
-                            "-t",
-                            threads,
-                            "-o",
-                            omp_out,
-                            "-c",
-                            results_dir / "openmp.csv",
-                        ),
-                        f"{step_prefix} openmp t={threads}",
-                        keep_going,
-                    )
-                    if failure:
-                        failures.append(failure)
-                    else:
+                    if not args.backends or "openmp" in args.backends:
                         failure = run_command(
-                            build_command(verify, seq_out, omp_out),
-                            f"{step_prefix} verify openmp t={threads}",
+                            build_command(
+                                voxelize_omp,
+                                "-i",
+                                mesh_path,
+                                "-r",
+                                res,
+                                "-t",
+                                threads,
+                                "-o",
+                                omp_out,
+                                "-c",
+                                results_dir / "openmp.csv",
+                            ),
+                            f"{step_prefix} openmp t={threads}",
                             keep_going,
-                            verify_pair=(seq_out, omp_out),
                         )
                         if failure:
                             failures.append(failure)
+                        else:
+                            failure = run_command(
+                                build_command(verify, seq_out, omp_out),
+                                f"{step_prefix} verify openmp t={threads}",
+                                keep_going,
+                                verify_pair=(seq_out, omp_out),
+                            )
+                            if failure:
+                                failures.append(failure)
 
-                    failure = run_command(
-                        build_command(
-                            voxelize_pth,
-                            "-i",
-                            mesh_path,
-                            "-r",
-                            res,
-                            "-t",
-                            threads,
-                            "-o",
-                            pth_out,
-                            "-c",
-                            results_dir / "pthreads.csv",
-                        ),
-                        f"{step_prefix} pthreads t={threads}",
-                        keep_going,
-                    )
-                    if failure:
-                        failures.append(failure)
-                    else:
+                    if not args.backends or "pthreads" in args.backends:
                         failure = run_command(
-                            build_command(verify, seq_out, pth_out),
-                            f"{step_prefix} verify pthreads t={threads}",
+                            build_command(
+                                voxelize_pth,
+                                "-i",
+                                mesh_path,
+                                "-r",
+                                res,
+                                "-t",
+                                threads,
+                                "-o",
+                                pth_out,
+                                "-c",
+                                results_dir / "pthreads.csv",
+                            ),
+                            f"{step_prefix} pthreads t={threads}",
                             keep_going,
-                            verify_pair=(seq_out, pth_out),
                         )
                         if failure:
                             failures.append(failure)
+                        else:
+                            failure = run_command(
+                                build_command(verify, seq_out, pth_out),
+                                f"{step_prefix} verify pthreads t={threads}",
+                                keep_going,
+                                verify_pair=(seq_out, pth_out),
+                            )
+                            if failure:
+                                failures.append(failure)
 
-                    failure = run_command(
-                        [
-                            args.mpirun,
-                            "-np",
-                            str(threads),
-                            str(voxelize_mpi),
-                            "-i",
-                            str(mesh_path),
-                            "-r",
-                            str(res),
-                            "-o",
-                            str(mpi_out),
-                            "-c",
-                            str(results_dir / "mpi.csv"),
-                        ],
-                        f"{step_prefix} mpi p={threads}",
-                        keep_going,
-                    )
-                    if failure:
-                        failures.append(failure)
-                    else:
+                    if not args.backends or "mpi" in args.backends:
                         failure = run_command(
-                            build_command(verify, seq_out, mpi_out),
-                            f"{step_prefix} verify mpi p={threads}",
+                            [
+                                args.mpirun,
+                                "-np",
+                                str(threads),
+                                str(voxelize_mpi),
+                                "-i",
+                                str(mesh_path),
+                                "-r",
+                                str(res),
+                                "-o",
+                                str(mpi_out),
+                                "-c",
+                                str(results_dir / "mpi.csv"),
+                            ],
+                            f"{step_prefix} mpi p={threads}",
                             keep_going,
-                            verify_pair=(seq_out, mpi_out),
                         )
                         if failure:
                             failures.append(failure)
+                        else:
+                            failure = run_command(
+                                build_command(verify, seq_out, mpi_out),
+                                f"{step_prefix} verify mpi p={threads}",
+                                keep_going,
+                                verify_pair=(seq_out, mpi_out),
+                            )
+                            if failure:
+                                failures.append(failure)
 
-                if voxelize_cuda.is_file() and voxelize_cuda.stat().st_mode & 0o111:
+                if (not args.backends or "cuda" in args.backends) and voxelize_cuda.is_file() and voxelize_cuda.stat().st_mode & 0o111:
                     for block_size in BLOCK_SIZES:
                         cuda_out = results_dir / f"cuda_{block_size}tpb_{res}_{stem}.voxel"
                         failure = run_command(
