@@ -1,0 +1,4 @@
+grid_res,best_config,best_mean_ms,best_avg_speedup_vs_seq,runner_up_config,runner_up_mean_ms,margin_ms,margin_pct_vs_runner_up
+32,cuda_256tpb,6.570008,0.441865,cuda_128tpb,6.823763,0.253755,3.718700
+64,cuda_256tpb,17.662580,0.531107,cuda_128tpb,17.921651,0.259071,1.445576
+128,cuda_256tpb,142.651527,0.370581,cuda_128tpb,143.120550,0.469023,0.327712

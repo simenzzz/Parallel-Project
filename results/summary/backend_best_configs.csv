@@ -1,0 +1,13 @@
+impl,grid_res,config,meshes,avg_mean_ms,avg_speedup_vs_seq
+openmp,32,omp_8t,9,0.395296,3.330164
+pthreads,32,pth_4t,9,1.197000,1.335531
+mpi,32,mpi_4p,9,1.068111,1.819277
+cuda,32,cuda_256tpb,9,6.570008,0.441865
+openmp,64,omp_8t,9,0.736407,3.662965
+pthreads,64,pth_4t,9,1.769444,1.757523
+mpi,64,mpi_1p,9,2.536852,1.118526
+cuda,64,cuda_256tpb,9,17.662580,0.531107
+openmp,128,omp_8t,9,2.176185,3.452001
+pthreads,128,pth_4t,9,4.597185,1.818916
+mpi,128,mpi_4p,9,6.391185,1.006708
+cuda,128,cuda_256tpb,9,142.651527,0.370581
