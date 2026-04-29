@@ -5,6 +5,7 @@ import glob
 import math
 import statistics
 import sys
+import typing
 from collections import defaultdict
 from pathlib import Path
 
@@ -372,7 +373,7 @@ def build_report_tables(
     return runtime_rows, speedup_rows
 
 
-def parse_workers(config: str) -> int | None:
+def parse_workers(config: str) -> typing.Optional[int]:
     digits = "".join(char for char in config if char.isdigit())
     return int(digits) if digits else None
 

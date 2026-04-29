@@ -99,10 +99,7 @@ int main(int argc, char **argv)
                     };
                     int idx = vg_idx(vx, vy, vz, res);
                     if (sat_triangle_aabb(&tri, center, half)) {
-                        /* Benign data race: all stores write constant 1;
-                         * single-byte stores are atomic on x86/ARM and the
-                         * join() call provides the memory barrier before the
-                         * caller reads the grid. */
+                        #pragma omp atomic write
                         grid.data[idx] = 1;
                     }
                 }
